@@ -2,7 +2,7 @@ import httpx
 import random
 from typing import Dict, List
 from pydantic import BaseModel, Field, HttpUrl
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 from nekro_agent.services.plugin.base import NekroPlugin, ConfigBase, SandboxMethodType
 from nekro_agent.api.schemas import AgentCtx
@@ -13,7 +13,7 @@ plugin = NekroPlugin(
     name="表情包搜索插件",
     module_name="emo_plugin",
     description="根据关键词搜索表情包图片",
-    version="1.0.0",
+    version="1.1.0",
     author="XGGM",
     url="https://github.com/XG2020/emo_plugin",
 )
@@ -22,7 +22,7 @@ plugin = NekroPlugin(
 class EmojiSearchConfig(ConfigBase):
     """表情包搜索配置"""
     API_URL: str = Field(
-        default="https://cn.apihz.cn/api/img/apihzbqbbaidu.php",
+        default="https://cn.apihz.cn/api/img/apihzbqb.php",
         title="表情包API地址",
         description="表情包搜索API, <a href='https://www.apihz.cn/api/apihzbqbbaidu.html' target='_blank'>接口文档</a>",
     )
@@ -68,14 +68,36 @@ async def fetch_emoji_images(keyword: str, limit: int = 1, page: int = 1) -> Dic
     """
     full_keyword = f"{keyword} {config.EXTRA_KEYWORD}".strip()
     encoded_keyword = quote(full_keyword)
-    
-    params = {
-        "id": config.USER_ID,
-        "key": config.USER_KEY,
-        "words": encoded_keyword,
-        "limit": limit,
-        "page": page
-    }
+    limit = max(1, min(int(limit), 20))
+    page = max(1, int(page))
+
+    endpoint = urlparse(config.API_URL).path
+    if endpoint.endswith("apihzbqbbaidu.php"):
+        params = {
+            "id": config.USER_ID,
+            "key": config.USER_KEY,
+            "words": encoded_keyword,
+            "limit": limit,
+            "page": page,
+        }
+    elif endpoint.endswith("apihzbqb.php"):
+        params = {
+            "id": config.USER_ID,
+            "key": config.USER_KEY,
+            "type": "2",
+            "limit": limit,
+            "page": page,
+        }
+        if encoded_keyword:
+            params["words"] = encoded_keyword
+    else:
+        params = {
+            "id": config.USER_ID,
+            "key": config.USER_KEY,
+            "words": encoded_keyword,
+            "limit": limit,
+            "page": page,
+        }
     
     async with httpx.AsyncClient(timeout=config.TIMEOUT) as client:
         response = await client.post(config.API_URL, params=params)
