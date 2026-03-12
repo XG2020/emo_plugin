@@ -135,15 +135,17 @@ def format_result(data: Dict) -> str:
     maxpage = data.get("maxpage")
     page_info = data.get("page")
     
+    rng = random.SystemRandom()
+    picked = rng.choice(res_list)
     if count is not None and maxpage is not None:
         return (
             f"找到{count}个表情包，当前第{page_info}/{maxpage}页\n"
-            f"随机选择一个: {random.choice(res_list)}"
+            f"随机选择一个: {picked}"
         )
     else:
         return (
             f"找到{len(res_list)}个表情包，当前页码{page_info}\n"
-            f"随机选择一个: {random.choice(res_list)}"
+            f"随机选择一个: {picked}"
         )
 
 @plugin.mount_sandbox_method(
